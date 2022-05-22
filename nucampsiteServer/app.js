@@ -3,6 +3,9 @@ var express = require("express");
 var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
+//express session, file store is function that returns another function
+const session = require("express-session");
+const FileStore = require("session-file-store")(session);
 
 var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/users");
@@ -34,41 +37,41 @@ app.set("view engine", "jade");
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-//parse incoming cookies and help prove authenticity of a cookie, prodive secret key as argumemt
-app.use(cookieParser("12345-67890-09876-54321"));
+//parse incoming cookies and help prove authenticity of a cookie, prodive secret key as argumemt, below line is commented out once we started using express sessions
+// app.use(cookieParser("12345-67890-09876-54321"));
+
+app.use(
+  session({
+    name: "session id",
+    secret: "12345-67890-09876-54321",
+    //once a session has been created and updated and saved, it will continue to be resaved when a request is made for that session, keeps session marked as active
+    resave: false,
+    //when a new session is created but then no updates are made, end of request it won't get saved bcit will be empty sesion without useful info, no cookie will be sent to client, prevents having empty session files and cookies being set up
+    saveUninitialized: false,
+    //createa  new file store as an object that we can use to save session info
+    store: new FileStore(),
+  })
+);
+
+//put here so that unauthenticated users can access this before tey're challenged to authenticate themselves, this also redirects unauthenticated users to the index page
+app.use("/", indexRouter);
+app.use("/users", usersRouter);
 
 //this is where we will make authenticated requests so that only users can access static data, put beneath if it's okay that users can see static data from the database
 function auth(req, res, next) {
-  if (!req.signedCookies.user) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      const err = new Error("You are not authenticated!");
-      res.setHeader("WWW-Authenticate", "Basic"); //lets cilent know that site is requesting authenticaiton
-      err.status = 401;
-      return next(err);
-    }
-    //parse username and password data so that the string appears in admin:password, then take it so that it's in a string, admin index 0 and password index 1
-    const auth = Buffer.from(authHeader.split(" ")[1], "base64")
-      .toString()
-      .split(":");
-    const user = auth[0];
-    const pass = auth[1];
-    if (user === "admin" && pass === "password") {
-      res.cookie('user', 'admin', {signed: true})
-      return next(); // authorized
-    } else {
-      const err = new Error("You are not authenticated!");
-      res.setHeader("WWW-Authenticate", "Basic");
-      err.status = 401;
-      return next(err);
-    }
+  console.log(req.session);
+
+  if (!req.session.user) {
+    const err = new Error("You are not authenticated!");
+    err.status = 401;
+    return next(err);
   } else {
-    if(req.signedCookies.user === 'admin') {
-      return next(); // authorized
+    if (req.session.user === "authenticated") {
+      return next();
     } else {
-      const err = new Error("You are not authorized")
+      const err = new Error("You are not authenticated!");
       err.status = 401;
-      return next(err)
+      return next(err);
     }
   }
 }
@@ -77,8 +80,6 @@ app.use(auth);
 
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use("/", indexRouter);
-app.use("/users", usersRouter);
 app.use("/campsites", campsiteRouter);
 app.use("/promotions", promotionRouter);
 app.use("/partners", partnerRouter);
