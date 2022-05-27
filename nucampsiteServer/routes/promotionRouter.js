@@ -1,5 +1,6 @@
 const express = require("express");
 const Promotion = require("../models/promotion");
+const authenticate = require("../authenticate");
 const promotionRouter = express.Router();
 
 promotionRouter
@@ -18,7 +19,7 @@ promotionRouter
       })
       .catch((err) => next(err));
   })
-  .post((req, res, next) => {
+  .post(authenticate.verifyUser, (req, res, next) => {
     Promotion.create(req.body)
       .then((promotion) => {
         console.log("Partner Created ", promotion);
@@ -28,11 +29,11 @@ promotionRouter
       })
       .catch((err) => next(err));
   })
-  .put((req, res) => {
+  .put(authenticate.verifyUser, (req, res, next) => {
     res.statusCode = 403;
     res.end("PUT operation not supported on /promotion");
   })
-  .delete((req, res, next) => {
+  .delete(authenticate.verifyUser, (req, res, next) => {
     Promotion.deleteMany()
       .then((response) => {
         res.statusCode = 200;
@@ -44,12 +45,12 @@ promotionRouter
 
 promotionRouter
   .route("/:promotionId")
-  .all((req, res, next) => {
+  .all(authenticate.verifyUser, (req, res, next) => {
     res.statusCode = 200;
     res.setHeader("Content-Type", "text/plain");
     next();
   })
-  .get((req, res, next) => {
+  .get(authenticate.verifyUser, (req, res, next) => {
     Promotion.findById(req.params.promotionId)
       .then((promotion) => {
         res.statusCode = 200;
@@ -58,12 +59,12 @@ promotionRouter
       })
       .catch((err) => next(err));
   })
-  .post((req, res) => {
+  .post(authenticate.verifyUser, (req, res, next) => {
     res.end(
       `POST operations not supported on /promotion/${req.params.promotionId}`
     );
   })
-  .put((req, res, next) => {
+  .put(authenticate.verifyUser, (req, res, next) => {
     Promotion.findByIdAndUpdate(
       req.params.promotionId,
       {
@@ -78,7 +79,7 @@ promotionRouter
       })
       .catch((err) => next(err));
   })
-  .delete((req, res, next) => {
+  .delete(authenticate.verifyUser, (req, res, next) => {
     Promotion.findByIdAndDelete(req.params.promotionId)
       .then((response) => {
         res.statusCode = 200;
