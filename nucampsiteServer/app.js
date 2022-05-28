@@ -8,6 +8,7 @@ var logger = require("morgan");
 // const FileStore = require("session-file-store")(session);
 //passport and authenticate
 const passport = require("passport");
+const authenticate = require('./authenticate');
 const config = require("./config")
 
 var indexRouter = require("./routes/index");
@@ -58,7 +59,7 @@ app.use(express.urlencoded({ extended: false }));
 
 //set up passport and session
 app.use(passport.initialize());
-// app.use(passport.session());
+app.use(passport.session());
 
 //put here so that unauthenticated users can access this before tey're challenged to authenticate themselves, this also redirects unauthenticated users to the index page
 app.use("/", indexRouter);
